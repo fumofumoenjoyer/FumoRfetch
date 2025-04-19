@@ -360,44 +360,81 @@ fn get_intel_driver_version() -> String {
 }
 
 fn display_info(info: &SystemInfo) {
-    // Create an Arch Linux ASCII art logo
-    let logo = [
-        "      /\\      ",
-        "     /  \\     ",
-        "    /\\   \\    ",
-        "   /      \\   ",
-        "  /   ,,   \\  ",
-        " /   |  |   \\ ",
-        "/_-''    ''-_\\",
-        "             ",
-    ];
+    // Read the fumofetch ASCII art from file
+    let logo = read_logo_file().unwrap_or_else(|_| {
+        // Fallback to a basic Fumo ASCII art if file can't be read
+        vec![
+            "      /\\      ",
+            "     /  \\     ",
+            "    /\\   \\    ",
+            "   /      \\   ",
+            "  /   ,,   \\  ",
+            " /   |  |   \\ ",
+            "/_-''    ''-_\\",
+            "             ",
+        ].iter().map(|s| s.to_string()).collect()
+    });
     
-    // Prepare the information lines
+    // Prepare the information lines with proper formatting
     let info_lines = [
-        format!("{}@{}", whoami(), info.hostname),
-        format!("OS: {}", info.os),
-        format!("Kernel: {}", info.kernel),
-        format!("Uptime: {}", info.uptime),
-        format!("Shell: {}", info.shell),
-        format!("Terminal: {}", info.terminal.as_deref().unwrap_or("Unknown")),
-        format!("Packages: {}", info.packages),
-        format!("CPU: {}", info.cpu),
-        format!("GPU: {}", info.gpu),
-        format!("GPU Driver: {}", info.gpu_driver),
-        format!("Memory: {} / {}", info.memory.0, info.memory.1),
+        format!("\x1b[1;36m{}@{}\x1b[0m", whoami(), info.hostname),
+        format!("\x1b[1;32mOS:\x1b[0m {}", info.os),
+        format!("\x1b[1;32mKernel:\x1b[0m {}", info.kernel),
+        format!("\x1b[1;32mUptime:\x1b[0m {}", info.uptime),
+        format!("\x1b[1;32mShell:\x1b[0m {}", info.shell),
+        format!("\x1b[1;32mTerminal:\x1b[0m {}", info.terminal.as_deref().unwrap_or("Unknown")),
+        format!("\x1b[1;32mPackages:\x1b[0m {}", info.packages),
+        format!("\x1b[1;32mCPU:\x1b[0m {}", info.cpu),
+        format!("\x1b[1;32mGPU:\x1b[0m {}", info.gpu),
+        format!("\x1b[1;32mGPU Driver:\x1b[0m {}", info.gpu_driver),
+        format!("\x1b[1;32mMemory:\x1b[0m {} / {}", info.memory.0, info.memory.1),
     ];
     
-    // Display the logo and info side by side
-    let max_logo_len = logo.iter().map(|line| line.len()).max().unwrap_or(0);
+    // Print escape sequence to hide cursor and ensure proper display
+    print!("\x1b[?25l");
+    
+    // Calculate the maximum width of the logo for proper alignment
+    let max_logo_len = logo.iter().map(|line| visible_length(line)).max().unwrap_or(0);
     let padding = 4;  // Space between logo and info
     
+    // Display the logo and info side by side with proper alignment
     for i in 0..logo.len().max(info_lines.len()) {
-        let logo_line = if i < logo.len() { logo[i] } else { "" };
+        let logo_line = if i < logo.len() { &logo[i] } else { "" };
         let info_line = if i < info_lines.len() { &info_lines[i] } else { "" };
         
-        let spaces = " ".repeat(max_logo_len - logo_line.len() + padding);
-        println!("\x1b[1;36m{}\x1b[0m{}\x1b[1;32m{}\x1b[0m", logo_line, spaces, info_line);
+        // Calculate visible length of the logo line (accounting for ANSI escape sequences)
+        let visible_logo_len = visible_length(logo_line);
+        let spaces = " ".repeat(max_logo_len - visible_logo_len + padding);
+        
+        println!("{}{}{}", logo_line, spaces, info_line);
     }
+    
+    // Show cursor again
+    print!("\x1b[?25h");
+}
+
+// Helper function to calculate visible length of a string (ignoring ANSI escape sequences)
+fn visible_length(s: &str) -> usize {
+    let mut visible_len = 0;
+    let mut in_escape = false;
+    
+    for c in s.chars() {
+        if in_escape {
+            if c == 'm' {
+                in_escape = false;
+            }
+            continue;
+        }
+        
+        if c == '\x1b' {
+            in_escape = true;
+            continue;
+        }
+        
+        visible_len += 1;
+    }
+    
+    visible_len
 }
 
 fn whoami() -> String {
@@ -413,4 +450,38 @@ fn whoami() -> String {
             .trim()
             .to_string()
         })
+}
+
+fn read_logo_file() -> Result<Vec<String>, std::io::Error> {
+    // Try to load from resources directory first
+    let resource_path = Path::new("resources").join("fumofetch_logo.txt");
+    
+    // If resource path exists, try to read it
+    let logo_content = if resource_path.exists() {
+        fs::read_to_string(resource_path)?
+    } else {
+        // Fallback to checking in current directory
+        let logo_path = Path::new("fumofetch_logo.txt");
+        fs::read_to_string(logo_path)?
+    };
+    
+    // Process the logo content line by line, preserving all ANSI escape sequences
+    let mut result = Vec::new();
+    let mut current_line = String::new();
+    
+    for c in logo_content.chars() {
+        if c == '\n' {
+            result.push(current_line);
+            current_line = String::new();
+        } else {
+            current_line.push(c);
+        }
+    }
+    
+    // Don't forget the last line if it doesn't end with a newline
+    if !current_line.is_empty() {
+        result.push(current_line);
+    }
+    
+    Ok(result)
 }
