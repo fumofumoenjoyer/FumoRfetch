@@ -1,4 +1,4 @@
-# Rfetch
+# FumoRfetch
 
 Fetch script made with rust purely for fun.
 
