@@ -1,6 +1,6 @@
 # FumoRfetch
 
-Fetch script made with rust purely for fun.
+Fetch script made with rust purely for fun. based on [FumoFetch](https://github.com/System64fumo/fumofetch) 
 
 ## Usage
 Clone this repo, enter the directory and then do ```cargo build``` or ```cargo run```
