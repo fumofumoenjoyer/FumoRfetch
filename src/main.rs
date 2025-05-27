@@ -113,7 +113,7 @@ fn get_terminal() -> Option<String> {
 
 fn get_package_count() -> String {
     // Try to detect package manager and count packages
-    // This is a simplified version - you might want to add more package managers
+    // This is a simplified version
     
     // Check for apt (Debian/Ubuntu)
     if let Ok(output) = Command::new("dpkg").args(&["--get-selections"]).output() {
@@ -362,7 +362,7 @@ fn get_intel_driver_version() -> String {
 fn display_info(info: &SystemInfo) {
     // Read the fumofetch ASCII art from file
     let logo = read_logo_file().unwrap_or_else(|_| {
-        // Fallback to a basic Fumo ASCII art if file can't be read
+        // Fallback logo
         vec![
             "      /\\      ",
             "     /  \\     ",
